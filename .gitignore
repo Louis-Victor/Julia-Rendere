@@ -1,0 +1,12 @@
+# Build output directories
+bin/
+obj/
+
+# Compiled object files
+*.o
+*.d
+
+# Executables
+*.exe
+*.out
+*.app
