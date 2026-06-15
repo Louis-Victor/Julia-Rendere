@@ -57,28 +57,53 @@ void main(){
     int numStep = 0;
 
 
-    for(int i=0;i<steps;i++){
-        point = f(point,c,power);
-        //point3 = g(point,c);
-		if(norm(point)>4){
-        //if(norm(point) > 4 || norm(point3) > 4){
-            escape = true;
-            numStep = i;
-            break;
-        }
-    }
-    if(escape){
-        float normStep = float(numStep) / float(steps);
-        //float timeMantisa = time - floor(time);
-        //float aval = atan(point.y/point.x)/3.141592653589793f;
-		if(colour){
-        	fragColor = hsva(vec4(normStep,0.6f,1.0f,1.0f));
-		}else{
-        	fragColor = hsva(vec4(0.0,0.0,1.0-normStep,1.0f));
+	if(power == 1){
+		dvec2 point2 = point;
+		for(int i=0;i<steps;i++){
+			point = f(point,c,2);
+			point2 = f(point2,c,3);
+			if(norm(point)>4 || norm(point2)>4){
+				escape = true;
+				numStep = i;
+				break;
+			}
 		}
-    }else{
-        fragColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    }
+		if(escape){
+			float normStep = float(numStep) / float(steps);
+			//float timeMantisa = time - floor(time);
+			//float aval = atan(point.y/point.x)/3.141592653589793f;
+			if(colour){
+				fragColor = hsva(vec4(normStep,0.6f,1.0f,1.0f));
+			}else{
+				fragColor = hsva(vec4(0.0,0.0,1.0-normStep,1.0f));
+			}
+		}else{
+			fragColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+		}
+	}else{
+		for(int i=0;i<steps;i++){
+			point = f(point,c,power);
+			//point3 = g(point,c);
+			if(norm(point)>4){
+			//if(norm(point) > 4 || norm(point3) > 4){
+				escape = true;
+				numStep = i;
+				break;
+			}
+		}
+		if(escape){
+			float normStep = float(numStep) / float(steps);
+			//float timeMantisa = time - floor(time);
+			//float aval = atan(point.y/point.x)/3.141592653589793f;
+			if(colour){
+				fragColor = hsva(vec4(normStep,0.6f,1.0f,1.0f));
+			}else{
+				fragColor = hsva(vec4(0.0,0.0,1.0-normStep,1.0f));
+			}
+		}else{
+			fragColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+		}
+	}
 
 	//fragColor = vec4(1.0,0.0,0.0,1.0);
     //vec2 uv = gl_FragCoord.xy / vec2(width,height);

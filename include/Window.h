@@ -3,6 +3,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <glm/glm.hpp>
 
 // Window class
 class Window{
@@ -11,6 +12,8 @@ class Window{
         int width, height;
         const char* label;
         bool _close;
+		int posX, posY; 
+		static void windowPosCallback(GLFWwindow* window, int xpos, int ypos);
 
     public:
         Window();
@@ -31,6 +34,11 @@ class Window{
         void clear(float r, float g, float b, float alpha);
         // New method: make this window's OpenGL context current
         void makeCurrent();
+		void getPosition(int& x, int& y) const;
+		int getPosX() const { return posX; }
+		int getPosY() const { return posY; }
+		glm::dvec2 getCursorPosition() const;
+
 };
 
 #endif

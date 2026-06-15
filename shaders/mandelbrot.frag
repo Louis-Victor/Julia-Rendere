@@ -21,6 +21,7 @@ uniform float radius;
 uniform dvec2 constPoint;
 uniform int power;
 uniform bool colour;
+uniform dvec2 mousePos;
 
 dvec2 cmult(dvec2 x, dvec2 y){
 	return dvec2(x.x*y.x-x.y*y.y,x.x*y.y+x.y*y.x);
@@ -44,12 +45,49 @@ dvec2 g(dvec2 z,dvec2 c){
 	return cpow(z,3)+c;
 }
 
+const double cursorWidth  = 0.001;
+const double cursorHeight = 0.02;
+
 void main(){
     dvec2 point = (2.0/zoom)*gl_FragCoord.xy/height - (1.0/zoom)*vec2(width/height,1.0)+shift;
+    dvec2 mouse = (2.0/zoom) * mousePos * vec2(width/height, 1.0) - (1.0/zoom) * vec2(width/height, 1.0) + shift;
 
 
 	if(norm(point-constPoint)<0.00001/(zoom*zoom)){
 		fragColor = vec4(1.0,0.0,0.0,1.0);
+	}else if( (abs(point.x-mouse.x) < cursorWidth/zoom && abs(point.y-mouse.y) < cursorHeight/zoom) || (abs(point.y-mouse.y) < cursorWidth/zoom && abs(point.x-mouse.x) < cursorHeight/zoom)){
+		fragColor = vec4(0.0,1.0,0.0,1.0);
+	}else if(power==1){
+		dvec2 c = point;
+		point = dvec2(0.0,0.0);
+		dvec2 point2  = dvec2(0.0,0.0);
+
+		bool escape = false;
+		int numStep = 0;
+
+		for(int i=0;i<steps;i++){
+			point = f(point,c,2);
+			point2 = f(point2,c,3);
+			if(norm(point)>4 || norm(point2) > 4){
+				escape = true;
+				numStep = i;
+				break;
+			}
+		}
+		if(escape){
+			float normStep = float(numStep) / float(steps);
+			//float timeMantisa = time - floor(time);
+			//float aval = atan(point.y/point.x)/3.141592653589793f;
+			if(colour){
+				// COLOUR
+				fragColor = hsva(vec4(normStep,0.6f,1.0f,1.0f));
+			}else{
+				// MONOCHROME
+				fragColor = hsva(vec4(0.0,0.0,1.0-normStep,1.0f));
+			}
+		}else{
+			fragColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+		}
 	}else{
 		// JULIA
 		//dvec2 c = constPoint;//radius*vec2(cos(angle),sin(angle));

@@ -60,7 +60,11 @@ int power = 2;
 
 bool colour = false;
 
+bool rightMousePressed = false;
+double panSensitivity = 0.015;
+
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods){
+
     if(key == GLFW_KEY_SPACE && action == GLFW_PRESS){
         //start = !start;
 		//rotateAngle = !rotateAngle;
@@ -121,7 +125,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if(key == GLFW_KEY_T && action == GLFW_PRESS){
 		point = glm::dvec2(0.0,0.0);
 	}
-	if(key > 49 && key < 58&& action == GLFW_PRESS){
+	if(key > 48 && key < 58&& action == GLFW_PRESS){
 		power = key - 48;
 	}
 	if(key == GLFW_KEY_TAB && action == GLFW_PRESS){
@@ -129,6 +133,43 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 }
 
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        double mouseX, mouseY;
+        glfwGetCursorPos(window, &mouseX, &mouseY);
+
+        double nx = mouseX / _width;
+        double ny = 1.0 - (mouseY / _height);
+
+        double aspect = (double)_width / _height;
+        glm::dvec2 mouseFractal;
+        mouseFractal.x = (2.0 / zoom) * nx * aspect - (1.0 / zoom) * aspect + shift.x;
+        mouseFractal.y = (2.0 / zoom) * ny - (1.0 / zoom) + shift.y;
+
+        point = mouseFractal;
+
+        std::cout << "Julia constant set to: " << glm::to_string(point) << std::endl;
+    }else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+        if (action == GLFW_PRESS) {
+            rightMousePressed = true;
+            xoffset = 0.0f;
+            yoffset = 0.0f;
+        } else if (action == GLFW_RELEASE) {
+            rightMousePressed = false;
+        }
+    }
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    double zoomFactor = 1.1;
+    if (yoffset < 0) {
+        zoom /= zoomFactor;
+    } else if (yoffset > 0) {
+        zoom *= zoomFactor;
+    }
+    zoom = glm::clamp(zoom, 1e-6, 1e6);
+    std::cout << "Zoom: " << zoom << std::endl;
+}
 
 
 int main(int argc, char** argv){
@@ -163,9 +204,16 @@ int main(int argc, char** argv){
         return 1;
     }
 
+
     // Set key callbacks (no change)
     glfwSetKeyCallback(juliaWindow.getWindow(), key_callback);
     glfwSetKeyCallback(mandelbrotWindow.getWindow(), key_callback);
+
+	// mouse callback
+	glfwSetMouseButtonCallback(juliaWindow.getWindow(), mouse_button_callback);
+	glfwSetMouseButtonCallback(mandelbrotWindow.getWindow(), mouse_button_callback);
+	glfwSetScrollCallback(juliaWindow.getWindow(), scroll_callback);
+	glfwSetScrollCallback(mandelbrotWindow.getWindow(), scroll_callback);
 
     std::cout << "OpenGL version: " << glGetString(GL_VERSION) << std::endl;
 
@@ -212,6 +260,8 @@ int main(int argc, char** argv){
 	float angle = 0;
 	//float deltaTime = 0;
 	//float lastTime = glfwGetTime();
+	
+
 
     /* Render loop */
     // Check if window has closed
@@ -225,6 +275,14 @@ int main(int argc, char** argv){
             cout << "Closed\n";
             break;
         }
+
+		// move screen with mouse
+		if (rightMousePressed) {
+			shift.x -= xoffset * panSensitivity / zoom;
+			shift.y -= yoffset * panSensitivity / zoom;
+			xoffset = 0.0f;
+			yoffset = 0.0f;
+		}
         
 
 		// DRAW JULIA
@@ -272,6 +330,12 @@ int main(int argc, char** argv){
 		mandelbrotShader.setDVec2("constPoint",point);
 		mandelbrotShader.setInt("power",power);
 		mandelbrotShader.setBool("colour",colour);
+
+		glm::dvec2 rawMouse = mandelbrotWindow.getCursorPosition();
+		glm::dvec2 normMouse;
+		normMouse.x = rawMouse.x / mandelbrotWindow.getWidth();
+		normMouse.y = 1.0 - (rawMouse.y / mandelbrotWindow.getHeight());   // flip
+		mandelbrotShader.setDVec2("mousePos", normMouse);
 
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
