@@ -8,14 +8,17 @@ vec4 hsva(vec4 c){
     return vec4(rgb, c.w);
 }
 
-in vec4 gl_FragCoord;
 out vec4 fragColor;
 
-uniform double width;
-uniform double height;
-uniform dvec2 shift;
-uniform double zoom;
+uniform double scale_x;
+uniform double scale_y;
+uniform double offset_x;
+uniform double offset_y;
+uniform double cursorWidth;
+uniform double cursorHeight;
+uniform double indicatorSize;
 uniform int steps;
+uniform float invStep;
 uniform float angle;
 uniform float radius;
 uniform dvec2 constPoint;
@@ -23,19 +26,48 @@ uniform int power;
 uniform bool colour;
 uniform dvec2 mousePos;
 
+const double ESCAPE_SQ = 4.0;
+
 dvec2 cmult(dvec2 x, dvec2 y){
 	return dvec2(x.x*y.x-x.y*y.y,x.x*y.y+x.y*y.x);
 }
+
+dvec2 cpow2(dvec2 x) {
+    return dvec2(x.x*x.x - x.y*x.y, 2.0*x.x*x.y);
+}
+dvec2 cpow3(dvec2 x) {
+    dvec2 sq = cpow2(x);
+    return dvec2(sq.x*x.x - sq.y*x.y, sq.x*x.y + sq.y*x.x);
+}
 dvec2 cpow(dvec2 x,int p){
-	dvec2 result = x;
-	for(int i=1;i<p;i++){
-		result = cmult(result,x);
+	switch(p){
+		case 0:
+			return dvec2(1.0,0.0);
+			break;
+		case 1:
+			return x;
+			break;
+		case 2:
+			return cpow2(x);
+			break;
+		case 3:
+			return cpow3(x);
+			break;
+		default:
+			dvec2 result = dvec2(1.0,0.0);
+			dvec2 base = x;
+			int expp = p;
+			while(expp>0){
+				if((expp & 1) == 1) result = cmult(result,base);
+				base = cpow2(base);
+				expp >>=1;
+			}
+			return result;
 	}
-	return result;
 }
 
 double norm(dvec2 x){
-	return x.x*x.x+x.y*x.y;
+	return dot(x,x);
 }
 
 dvec2 f(dvec2 z,dvec2 c, int power){
@@ -45,17 +77,14 @@ dvec2 g(dvec2 z,dvec2 c){
 	return cpow(z,3)+c;
 }
 
-const double cursorWidth  = 0.001;
-const double cursorHeight = 0.02;
 
 void main(){
-    dvec2 point = (2.0/zoom)*gl_FragCoord.xy/height - (1.0/zoom)*vec2(width/height,1.0)+shift;
-    dvec2 mouse = (2.0/zoom) * mousePos * vec2(width/height, 1.0) - (1.0/zoom) * vec2(width/height, 1.0) + shift;
+    dvec2 point = dvec2(gl_FragCoord.x * scale_x + offset_x, gl_FragCoord.y * scale_y + offset_y); 
 
 
-	if(norm(point-constPoint)<0.00001/(zoom*zoom)){
+	if(norm(point-constPoint)<indicatorSize){
 		fragColor = vec4(1.0,0.0,0.0,1.0);
-	}else if( (abs(point.x-mouse.x) < cursorWidth/zoom && abs(point.y-mouse.y) < cursorHeight/zoom) || (abs(point.y-mouse.y) < cursorWidth/zoom && abs(point.x-mouse.x) < cursorHeight/zoom)){
+	}else if( (abs(point.x-mousePos.x) < cursorWidth && abs(point.y-mousePos.y) < cursorHeight) || (abs(point.y-mousePos.y) < cursorWidth && abs(point.x-mousePos.x) < cursorHeight)){
 		fragColor = vec4(0.0,1.0,0.0,1.0);
 	}else if(power==1){
 		dvec2 c = point;
@@ -66,16 +95,16 @@ void main(){
 		int numStep = 0;
 
 		for(int i=0;i<steps;i++){
-			point = f(point,c,2);
-			point2 = f(point2,c,3);
-			if(norm(point)>4 || norm(point2) > 4){
+			point = cpow2(point) + c;
+			point2 = cpow3(point2) + c;
+			if(norm(point)>ESCAPE_SQ || norm(point2) > ESCAPE_SQ){
 				escape = true;
 				numStep = i;
 				break;
 			}
 		}
 		if(escape){
-			float normStep = float(numStep) / float(steps);
+			float normStep = float(numStep) * invStep;
 			//float timeMantisa = time - floor(time);
 			//float aval = atan(point.y/point.x)/3.141592653589793f;
 			if(colour){
@@ -100,16 +129,14 @@ void main(){
 
 		for(int i=0;i<steps;i++){
 			point = f(point,c,power);
-			//point3 = g(point,c);
-			if(norm(point)>4){
-			//if(norm(point) > 4 || norm(point3) > 4){
+			if(norm(point)>ESCAPE_SQ){
 				escape = true;
 				numStep = i;
 				break;
 			}
 		}
 		if(escape){
-			float normStep = float(numStep) / float(steps);
+			float normStep = float(numStep) * invStep;
 			//float timeMantisa = time - floor(time);
 			//float aval = atan(point.y/point.x)/3.141592653589793f;
 			if(colour){

@@ -43,6 +43,7 @@ const char* mandelbrotShaderList[shaderCount] = {
 
 
 int steps = 1;
+float invStep = 1.0f;
 int count = 0;
 double zoom = 0.6f;
 double zoomSpeed = 0.01f;
@@ -63,6 +64,9 @@ bool colour = false;
 bool rightMousePressed = false;
 double panSensitivity = 0.015;
 
+const double cursorWidth  = 0.001;
+const double cursorHeight = 0.02;
+
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods){
 
     if(key == GLFW_KEY_SPACE && action == GLFW_PRESS){
@@ -73,9 +77,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 	if(key == GLFW_KEY_ENTER && action == GLFW_PRESS){
 		steps *= 2;
+		invStep = 1.0f/((float)steps);
 	}
 	if(key == GLFW_KEY_BACKSPACE && action == GLFW_PRESS && steps > 1){
 		steps /= 2;
+		invStep = 1.0f/((float)steps);
 	}
     if(key == GLFW_KEY_UP && action == GLFW_PRESS){
 		shift += 0.6*glm::dvec2(0.0f,0.5f)/zoom;
@@ -283,6 +289,13 @@ int main(int argc, char** argv){
 			xoffset = 0.0f;
 			yoffset = 0.0f;
 		}
+
+		double inv_zoom = 1.0 / zoom;
+		double aspect = (double)_width / _height;
+		double scale_x = 2.0 * inv_zoom / _height;
+		double scale_y = 2.0 * inv_zoom / _height;
+		double offset_x = -inv_zoom * aspect + shift.x;
+		double offset_y = -inv_zoom + shift.y;
         
 
 		// DRAW JULIA
@@ -292,14 +305,14 @@ int main(int argc, char** argv){
 		//glBindVertexArray(triangleVAO);
 
         juliaWindow.clear(0.2f,0.3f,0.3f);
-        juliaShader.use();
 
         juliaShader.use();
-        juliaShader.setDouble("width",(double)_width);
-        juliaShader.setDouble("height",(double)_height);
+		juliaShader.setDouble("scale_x",scale_x);
+		juliaShader.setDouble("scale_y",scale_y);
+		juliaShader.setDouble("offset_x",offset_x);
+		juliaShader.setDouble("offset_y",offset_y);
         juliaShader.setInt("steps", steps);
-        juliaShader.setDouble("zoom",zoom);
-        juliaShader.setDVec2("shift",shift);
+		juliaShader.setFloat("invStep",invStep);
         juliaShader.setFloat("angle",angle);
         juliaShader.setFloat("radius",radius);
 		juliaShader.setDVec2("constPoint",point);
@@ -317,14 +330,17 @@ int main(int argc, char** argv){
 		glBindVertexArray(triangleVAO);
 
         mandelbrotWindow.clear(0.2f,0.3f,0.3f);
-        mandelbrotShader.use();
 
         mandelbrotShader.use();
-        mandelbrotShader.setDouble("width",(double)_width);
-        mandelbrotShader.setDouble("height",(double)_height);
+		mandelbrotShader.setDouble("scale_x",scale_x);
+		mandelbrotShader.setDouble("scale_y",scale_y);
+		mandelbrotShader.setDouble("offset_x",offset_x);
+		mandelbrotShader.setDouble("offset_y",offset_y);
+		mandelbrotShader.setDouble("cursorWidth",cursorWidth/zoom);
+		mandelbrotShader.setDouble("cursorHeight",cursorHeight/zoom);
+		mandelbrotShader.setDouble("indicatorSize",0.00003/(zoom*zoom));
         mandelbrotShader.setInt("steps", steps);
-        mandelbrotShader.setDouble("zoom",zoom);
-        mandelbrotShader.setDVec2("shift",shift);
+		mandelbrotShader.setFloat("invStep",invStep);
         mandelbrotShader.setFloat("angle",angle);
         mandelbrotShader.setFloat("radius",radius);
 		mandelbrotShader.setDVec2("constPoint",point);
@@ -332,10 +348,14 @@ int main(int argc, char** argv){
 		mandelbrotShader.setBool("colour",colour);
 
 		glm::dvec2 rawMouse = mandelbrotWindow.getCursorPosition();
-		glm::dvec2 normMouse;
-		normMouse.x = rawMouse.x / mandelbrotWindow.getWidth();
-		normMouse.y = 1.0 - (rawMouse.y / mandelbrotWindow.getHeight());   // flip
-		mandelbrotShader.setDVec2("mousePos", normMouse);
+		double nx = rawMouse.x / mandelbrotWindow.getWidth();
+		double ny = 1.0 - (rawMouse.y / mandelbrotWindow.getHeight());
+		inv_zoom = 1.0 / zoom;
+		aspect = (double)mandelbrotWindow.getWidth() / mandelbrotWindow.getHeight();
+		glm::dvec2 mouseFractal;
+		mouseFractal.x = (2.0 * inv_zoom) * nx * aspect - inv_zoom * aspect + shift.x;
+		mouseFractal.y = (2.0 * inv_zoom) * ny - inv_zoom + shift.y;
+		mandelbrotShader.setDVec2("mousePos", mouseFractal);
 
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
